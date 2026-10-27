@@ -18,7 +18,9 @@ JOINT_SWEEP_DURATION_S = 8.0
 # biases it (real test 2026-09-15, right arm, 3 reps: 12 s mean -2.07 std 0.11 vs 8 s mean -2.71
 # std 0.32). Elbow was unaffected (12 s -1.982/0.024 vs 8 s -1.979/0.025).
 # v1.3's J6 (wrist_roll_v13) is estimated the same way, so it gets the same duration (2026-10-15).
-JOINT_SWEEP_DURATION_BY_MODE_S = {"wrist_yaw2": 12.0, "wrist_roll_v13": 12.0}
+# The v1.3 J5 stage sweeps J6 too: at 8 s its estimate scattered 0.24 deg on the first v1.3 robot run
+# (2026-10-23) while the J6 stage at 12 s held its axis angle to 0.015 deg.
+JOINT_SWEEP_DURATION_BY_MODE_S = {"wrist_yaw2": 12.0, "wrist_roll_v13": 12.0, "wrist_pitch_v13": 12.0}
 # How the v1.2 J6 (wrist_yaw2) offset is estimated.
 #   "position"   : marker positions only -- the angle, about the J6 axis, between the J5 axis and
 #                  the marker's radial offset, compared with the same angle from the URDF.
@@ -59,10 +61,11 @@ WRIST_YAW2_SOURCE = "bracket_sweeps"
 MAX_FIT_POINTS = 1000
 # Per-sweep target-estimate scatter measured on the real robot (deg). Used as a floor on the
 # sample std so a mean of only 2 agreeing sweeps cannot pass on luck.
-# elbow: 0.025 deg measured with +-20 deg sweeps fitting all frames (2026-09-15); floor kept at 0.05.
+# elbow: 0.025 deg measured with +-20 deg sweeps fitting all frames (2026-09-15); floor 0.05, raised to 0.12 on
+# 2026-10-27: three runs on one v1.2 reset scattered 0.11-0.12 deg per sweep and their means 0.3 deg apart.
 # v1.3 (2026-10-15; before, both fell back to 3 samples and no floor): wrist_roll_v13 is the wrist_yaw2
 # method, so it takes its floor; wrist_pitch_v13 measured 0.06-0.13 deg per sweep pair in the simulator.
-JOINT_ESTIMATE_NOISE_DEG = {"wrist_pitch": 0.03, "wrist_yaw2": 0.06, "elbow": 0.05,
+JOINT_ESTIMATE_NOISE_DEG = {"wrist_pitch": 0.03, "wrist_yaw2": 0.06, "elbow": 0.12,
                             "wrist_roll_v13": 0.06, "wrist_pitch_v13": 0.10}
 MIN_MEAN_SAMPLES_BY_MODE = {"wrist_pitch": 2, "wrist_yaw2": 2, "elbow": 2, "wrist_roll_v13": 2, "wrist_pitch_v13": 2}
 

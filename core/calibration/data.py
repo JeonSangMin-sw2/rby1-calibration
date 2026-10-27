@@ -166,6 +166,21 @@ def load_min_marker_x_gap_m(path=SETTING_PATH):
     return value, True
 
 
+def load_step2_plan_options(path=SETTING_PATH):
+    """Step 2 collection options from setting.yaml step2 (user, 2026-10-27, to shorten Step 2):
+    skip_half_steps (default False) drops the half-size steps of the base plan (head 64 -> 44 poses,
+    headless 54 -> 36); offline on two head and two headless real runs the check-pose hands moved
+    0.25-0.33 / <= 0.24 mm. sample_time_s (default 1.0) is how long each pose's marker capture averages;
+    0.5 s was tried on 2026-10-27 18:32 and raised the base-pose position residual 0.39 -> 0.66 mm."""
+    config = ConfigStorage.load(path) if os.path.exists(path) else {}
+    step2 = config.get("step2") or {}
+    skip = bool(step2.get("skip_half_steps", False))
+    sample_time = float(step2.get("sample_time_s", 1.0))
+    if not np.isfinite(sample_time) or sample_time <= 0:
+        raise ValueError(f"step2.sample_time_s in {path} must be a positive time in seconds, got {sample_time}")
+    return {"skip_half_steps": skip, "sample_time_s": sample_time}
+
+
 READY_POSES_PATH = Path(CONFIG_PATHS["ready_poses_yaml"])
 
 
@@ -236,12 +251,15 @@ def load_camera_mount_constraint(setting_path=None, camera_info_path=None):
     return {"model": str(model), "mount_to_cam": [float(v) for v in mount], "position_range_m": position_range}
 
 
-def format_mount_constraint(constraint):
+def format_mount_constraint(constraint, j6_solved=True, j5_solved=False):
     """One log line for a camera mount constraint: the design position and its allowed range per axis."""
     mount = constraint["mount_to_cam"]
     spans = ", ".join(f"{axis} {mount[i] * 1000:.1f} mm [{low * 1000:+.1f}, {high * 1000:+.1f}]"
                       for i, (axis, (low, high)) in enumerate(zip("xyz", constraint["position_range_m"])))
-    return f"position {spans}; camera angles fixed; J6 is solved in Step 2"
+    joints = "J6 is solved in Step 2" if j6_solved else "J6 held at its Step 1 value"
+    if j5_solved:
+        joints = "J5 is solved in Step 2, " + joints
+    return f"position {spans}; camera angles fixed; {joints}"
 
 
 # How close to an end of its range a camera axis counts as being at that end.
