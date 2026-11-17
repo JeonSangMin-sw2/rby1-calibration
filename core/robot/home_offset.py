@@ -116,6 +116,18 @@ def build_home_reset_baseline_data(robot, model, model_name=None, include_head=T
     return data
 
 
+def home_reset_pending(path):
+    """(pending, created_at) for a home_reset_baseline.json. Pending = the file still holds arm offsets:
+    a reset was done but its calibration was not applied yet (Apply writes the offsets back to 0)."""
+    path = Path(path)
+    if not path.is_file():
+        return False, None
+    data = ResultStorage.load(path) or {}
+    offsets = list(data.get("right_arm_joint_offset_deg") or []) + list(data.get("left_arm_joint_offset_deg") or [])
+    pending = any(abs(float(value)) > 1e-6 for value in offsets)
+    return pending, (data.get("metadata") or {}).get("created_at")
+
+
 def save_home_reset_baseline_json(
     robot,
     model,

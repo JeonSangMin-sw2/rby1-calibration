@@ -9,8 +9,9 @@ from pathlib import Path
 import numpy as np
 from scipy.spatial.transform import Rotation as R_scipy
 from ..data import (format_mount_constraint, get_arm_config, get_both_arm_config, get_head_config,
-                    load_camera_mount_constraint, load_step2_min_rot_noise_deg, mount_range_ends, validate_dataset)
-from ..calibration_optimizer import QPCalibrationOptimizer
+                    load_camera_mount_constraint, load_step2_head_tilt_anchor_weight, load_step2_min_rot_noise_deg,
+                    mount_range_ends, validate_dataset)
+from ..calibration_optimizer import HEAD_ANCHOR_WEIGHT_TILT, QPCalibrationOptimizer
 from ..observability import format_weak_directions, step2_weak_directions
 from ..CalibratorBase import BaseCalibrator
 D2R = np.pi / 180.0
@@ -58,6 +59,13 @@ def optimize_step2(
         self.log_msg(f"[WARN] step2.min_rot_noise_deg is missing from setting.yaml; using the default {min_rot_noise_deg} deg.")
     self.log_msg(f"[INFO] Step 2 marker-orientation noise floor: {min_rot_noise_deg} deg")
     min_rot_noise_rad = min_rot_noise_deg * D2R
+    head_tilt_anchor_weight = load_step2_head_tilt_anchor_weight()
+    if head_tilt_anchor_weight is None:
+        head_tilt_anchor_weight = HEAD_ANCHOR_WEIGHT_TILT
+        self.log_msg(f"[INFO] Step 2 head tilt anchor weight: {head_tilt_anchor_weight:g} (default)")
+    else:
+        self.log_msg(f"[INFO] Step 2 head tilt anchor weight: {head_tilt_anchor_weight:g} "
+                     f"(setting.yaml; default {HEAD_ANCHOR_WEIGHT_TILT:g})")
 
     head_cfg = get_head_config(self.model)
     use_head_kinematics = (
@@ -209,6 +217,7 @@ def optimize_step2(
             eps=1e-7,
             max_iter=200,
             min_rot_noise_std_rad=min_rot_noise_rad,
+            head_anchor_weight_tilt=head_tilt_anchor_weight,
             camera_pos_range_m=camera_pos_range_m,
             anchor_joint6=not solve_j6,
             anchor_joint5=not solve_j5,
@@ -260,6 +269,7 @@ def optimize_step2(
             eps=1e-7,
             max_iter=200,
             min_rot_noise_std_rad=min_rot_noise_rad,
+            head_anchor_weight_tilt=head_tilt_anchor_weight,
             camera_pos_range_m=camera_pos_range_m,
             anchor_joint6=not solve_j6,
             anchor_joint5=not solve_j5,
@@ -302,6 +312,7 @@ def optimize_step2(
             eps=1e-7,
             max_iter=200,
             min_rot_noise_std_rad=min_rot_noise_rad,
+            head_anchor_weight_tilt=head_tilt_anchor_weight,
         )
         opt_single.stop_event = self.stop_event
         self.stop_check()

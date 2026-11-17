@@ -35,6 +35,7 @@ marker:
 step2:
   min_marker_x_gap_m: 0.11
   min_rot_noise_deg: 0.3
+  head_tilt_anchor_weight: 200000.0
   sample_time_s: 1.0
   skip_half_steps: true
   wrist_diversity_poses: true

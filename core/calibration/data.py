@@ -217,6 +217,22 @@ def load_step2_wrist_diversity(robot_version, setting_path=SETTING_PATH, ready_p
     return steps, True
 
 
+def load_gripper_change_pose(robot_version, ready_poses_path=READY_POSES_PATH):
+    """Wizard gripper-change pose (ready_poses.yaml <version>.gripper_change): {"right": [7 deg],
+    "left": [7 deg]}. A missing or malformed entry is an error: the robot must not move to a guess."""
+    poses = ConfigStorage.load(ready_poses_path) if os.path.exists(ready_poses_path) else {}
+    ver = str(robot_version).lstrip("v")
+    entry = (poses.get(f"v{ver}") or {}).get("gripper_change")
+    try:
+        pose = {side: [float(v) for v in entry[f"{side}_arm"]] for side in ("right", "left")}
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(f"{ready_poses_path} v{ver}.gripper_change must have right_arm and left_arm "
+                         f"(7 joint angles in degrees each): {error!r}") from error
+    if any(len(pose[side]) != 7 or not np.all(np.isfinite(pose[side])) for side in pose):
+        raise ValueError(f"{ready_poses_path} v{ver}.gripper_change must have 7 finite joint angles per arm, got {entry}")
+    return pose
+
+
 def load_camera_mount_constraint(setting_path=None, camera_info_path=None):
     """The connected camera model's design mount pose and how far its position may differ from it,
     or None when that model's camera_info.yaml entry has no `mount_to_cam_position_range_m`.
@@ -336,6 +352,19 @@ def load_step2_min_rot_noise_deg(path=SETTING_PATH):
     return value, True
 
 
+def load_step2_head_tilt_anchor_weight(path=SETTING_PATH):
+    """step2.head_tilt_anchor_weight, or None when missing (the optimizer then keeps HEAD_ANCHOR_WEIGHT_TILT, 2e6).
+    2026-11-13 (user): 2e5, because at 2e6 a biased head tilt from the head sweeps dragged both J0 along."""
+    config = ConfigStorage.load(path) if os.path.exists(path) else {}
+    value = (config.get("step2") or {}).get("head_tilt_anchor_weight")
+    if value is None:
+        return None
+    value = float(value)
+    if not np.isfinite(value) or value < 0:
+        raise ValueError(f"step2.head_tilt_anchor_weight in {path} must be a weight of 0 or more, got {value}")
+    return value
+
+
 def marker_monitor_summary(history, max_jitter_mm=None):
     """Recognition and jitter per marker from recent samples.
 
@@ -361,6 +390,29 @@ def marker_monitor_summary(history, max_jitter_mm=None):
             "stable": stable,
         }
     return summary
+
+
+# Wizard auto exposure (D405 only, 2026-11-12): exposure times tried, in microseconds (a D405 takes us).
+AUTO_EXPOSURE_CANDIDATES_US = (1500, 2500, 4000, 6000, 8500, 12000, 16000)
+AUTO_EXPOSURE_MIN_RATE = 0.95          # held still: share of samples with the marker detected
+AUTO_EXPOSURE_MIN_TURNED_RATE = 0.90   # wrist turned towards / away from the camera
+
+
+def choose_auto_exposure(trials, max_jitter_mm):
+    """Pick the exposure from the wizard's auto exposure trials, or None when none qualifies.
+
+    trials: [{"exposure", "rate", "jitter_mm", "turned": [{"rate", "jitter_mm"}, ...]}], jitter = RMS
+    marker position jitter (mm, None without two detections). A trial qualifies when it was also measured
+    turned and every measurement meets the rate and max_jitter_mm. Among those the steadiest wins (largest
+    RMS jitter over its measurements), a darker exposure on a tie (less glare and motion blur)."""
+    def ok(m, min_rate):
+        return m["rate"] >= min_rate and m["jitter_mm"] is not None and m["jitter_mm"] <= max_jitter_mm
+    qualified = [t for t in trials if t.get("turned") and ok(t, AUTO_EXPOSURE_MIN_RATE)
+                 and all(ok(m, AUTO_EXPOSURE_MIN_TURNED_RATE) for m in t["turned"])]
+    if not qualified:
+        return None
+    worst = lambda t: max([t["jitter_mm"]] + [m["jitter_mm"] for m in t["turned"]])  # noqa: E731
+    return min(qualified, key=lambda t: (round(worst(t), 3), t["exposure"]))
 
 
 def get_arm_config(model, arm, version="1.2"):

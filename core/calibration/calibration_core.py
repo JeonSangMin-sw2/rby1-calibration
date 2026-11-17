@@ -21,6 +21,8 @@ from .sequences.result import SequenceContext, SequenceCancelled, require_conver
 DEFAULT_AUTO_EXPOSURE_US = 6000.0
 # Head move to zero before an arm ready pose that asks for it ("ready" sequence, head_zero=True).
 HEAD_ZERO_MOVE_TIME_S = 3.0
+# Wizard gripper-change pose: joints travel up to about 110 deg, so the move is kept slow.
+GRIPPER_POSE_MOVE_TIME_S = 6.0
 
 # The marker brackets are rigid parts bolted to nominally symmetric flanges, so their fitted
 # poses should differ only by a small mounting skew. Enforcing that halves the random part of
@@ -553,6 +555,31 @@ class CalibrationCore:
                 if not value:
                     raise RuntimeError("Ready pose failed")
                 ctx.complete("ready", True)
+            elif name == "gripper_pose":
+                # Wizard: both arms to the gripper-change pose of the robot version, head to zero, then
+                # the tool flange output off so the gripper can be unplugged. A v1.3 marker bracket goes
+                # on the gripper, which stays plugged in, so its power is left alone (2026-11-12, user).
+                from .data import load_gripper_change_pose
+                pose = load_gripper_change_pose(self.robot_version)
+                if not self.joint_calibrator.movej(self.robot, right_arm=np.radians(pose["right"]),
+                                                   left_arm=np.radians(pose["left"]), head=[0.0, 0.0],
+                                                   minimum_time=GRIPPER_POSE_MOVE_TIME_S, apply_offsets=False):
+                    ctx.check_cancelled()
+                    raise RuntimeError("Gripper-change pose move failed")
+                ctx.check_cancelled()
+                if str(self.robot_version).lstrip("v") == "1.3":
+                    self.log_msg("[Wizard] Gripper-change pose reached; v1.3 keeps the gripper, tool flange power left on.")
+                    ctx.complete("gripper_pose", {})
+                else:
+                    voltages = RobotOperations.power_off_tool_flanges(self.robot)
+                    self.log_msg("[Wizard] Gripper-change pose reached; tool flange output off: "
+                                 + ", ".join(f"{side} {value:.0f} V" for side, value in voltages.items()))
+                    ctx.complete("gripper_pose", voltages)
+            elif name == "auto_exposure":
+                from .sequences.auto_exposure import run_auto_exposure
+                if self.robot is None or self.observer is None:
+                    raise RuntimeError("Robot and camera must be connected for the auto exposure")
+                ctx.complete("auto_exposure", run_auto_exposure(self, ctx, **options))
             elif name == "full_ready":
                 for side in ("right", "left"):
                     ctx.check_cancelled()
