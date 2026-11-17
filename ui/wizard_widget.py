@@ -108,6 +108,70 @@ class HowToMoveArmsDialog(QDialog):
         btn_close.clicked.connect(self.accept)
         layout.addWidget(btn_close, alignment=Qt.AlignCenter)
 
+
+ROBOT_PORT = 50051
+UPC_ROBOT_ADDRESS = f"192.168.30.1:{ROBOT_PORT}"
+HOTSPOT_ROBOT_ADDRESS = f"192.168.12.1:{ROBOT_PORT}"
+
+
+def normalize_robot_address(text):
+    """As read off the robot's OLED ("192.168.8.130/23"): drop the network suffix, add the port when missing."""
+    address = text.strip().split("/")[0].strip()
+    return address if not address or ":" in address else f"{address}:{ROBOT_PORT}"
+
+
+class RobotIpDialog(QDialog):
+    """External PC: where to read the robot's address (the OLED display on its back), then enter it."""
+
+    def __init__(self, current_address="", parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(tr("dialogs.robot_ip.title"))
+        self.setStyleSheet("""
+            QDialog { background-color: #1e1e1e; color: #ffffff; }
+            QLabel { color: #ffffff; font-size: 14px; }
+            QLineEdit { background-color: #2a2a2a; color: white; border: 1px solid #444; border-radius: 4px; padding: 6px; font-size: 15px; }
+            QPushButton { background-color: #1e88e5; color: white; font-weight: bold; font-size: 14px; padding: 8px 16px; border-radius: 6px; }
+        """)
+        layout = QVBoxLayout(self)
+        layout.setSpacing(12)
+        img_lbl = QLabel()
+        pix = QPixmap(get_asset_path("img/robot_oled_ip.jpg"))
+        if not pix.isNull():
+            img_lbl.setPixmap(pix.scaled(480, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        else:
+            img_lbl.setText("[img/robot_oled_ip.jpg]")
+        img_lbl.setAlignment(Qt.AlignCenter)
+        layout.addWidget(img_lbl)
+        self.lbl_guide = QLabel(tr("dialogs.robot_ip.guide"))
+        self.lbl_guide.setWordWrap(True)
+        self.lbl_guide.setFixedWidth(520)
+        layout.addWidget(self.lbl_guide, alignment=Qt.AlignCenter)
+        self.lbl_hotspot = QLabel(tr("dialogs.robot_ip.hotspot", address=HOTSPOT_ROBOT_ADDRESS))
+        self.lbl_hotspot.setStyleSheet("color: #ffd700; font-weight: bold;")
+        self.lbl_hotspot.setWordWrap(True)
+        self.lbl_hotspot.setFixedWidth(520)
+        layout.addWidget(self.lbl_hotspot, alignment=Qt.AlignCenter)
+        row = QHBoxLayout()
+        lbl = QLabel(tr("dialogs.robot_ip.label"))
+        lbl.setStyleSheet("font-weight: bold;")
+        row.addWidget(lbl)
+        self.address_input = QLineEdit(current_address)
+        row.addWidget(self.address_input, 1)
+        layout.addLayout(row)
+        buttons = QHBoxLayout()
+        self.btn_ok = QPushButton(tr("dialogs.robot_ip.btn_ok"))
+        self.btn_ok.clicked.connect(self.accept)
+        self.btn_cancel = QPushButton(tr("dialogs.robot_ip.btn_cancel"))
+        self.btn_cancel.setStyleSheet("background-color: #546e7a;")
+        self.btn_cancel.clicked.connect(self.reject)
+        buttons.addWidget(self.btn_ok, 2)
+        buttons.addWidget(self.btn_cancel, 1)
+        layout.addLayout(buttons)
+
+    def address(self):
+        return normalize_robot_address(self.address_input.text())
+
+
 class CalibrationWizardWidget(QWidget):
     # Slide order. Everything that depends on a slide position uses these names (main_ui too),
     # so slides can be added or moved by editing this list alone.
@@ -338,6 +402,9 @@ class CalibrationWizardWidget(QWidget):
         if hasattr(self, 'rdo_bracket_yes'): self.rdo_bracket_yes.setText(tr("wizard.slides.slide_4.yes"))
         if hasattr(self, 'rdo_bracket_no'): self.rdo_bracket_no.setText(tr("wizard.slides.slide_4.no"))
         if hasattr(self, 'conn_box'): self.conn_box.setTitle(tr("wizard.slides.slide_4.box_title"))
+        if hasattr(self, 'lbl_run_where'): self.lbl_run_where.setText(tr("wizard.slides.slide_4.run_where"))
+        if hasattr(self, 'btn_ip_upc'): self.btn_ip_upc.setText(tr("wizard.slides.slide_4.btn_upc"))
+        if hasattr(self, 'btn_ip_external'): self.btn_ip_external.setText(tr("wizard.slides.slide_4.btn_external"))
         if hasattr(self, 'btn_wizard_connect'):
             self.btn_wizard_connect.setText(tr("wizard.btn_connected" if self.parent_app.robot is not None else "wizard.btn_connect"))
 
@@ -754,11 +821,15 @@ class CalibrationWizardWidget(QWidget):
             }
         """)
         self.chk_wiz_exp_confirmed.toggled.connect(self.on_wiz_exp_confirmed_toggled)
+        # 2026-11-17 (user): Yes already runs 4) the zero pose, so 3) and 4) live in the hand panel, on one
+        # row so the hand path does not scroll.
+        finish_row = QHBoxLayout()
+        finish_row.addWidget(self.chk_wiz_exp_confirmed, 3)
+        finish_row.addWidget(self.btn_exp_zero, 2)
+        manual_layout.addLayout(finish_row)
 
         exp_ctrl_box.setLayout(exp_ctrl_layout)
         exp_right.addWidget(exp_ctrl_box)
-        exp_right.addWidget(self.chk_wiz_exp_confirmed)     # 3)
-        exp_right.addWidget(self.btn_exp_zero)              # 4)
         self.set_exposure_choice("choice_idle")
         self.show_manual_exposure(False)
         content_exp_layout.addLayout(exp_right, 2)
@@ -951,7 +1022,9 @@ class CalibrationWizardWidget(QWidget):
         self.lbl_bracket_query = QLabel(tr("wizard.slides.slide_4.additional_bracket_query"))
         self.lbl_bracket_query.setStyleSheet("font-size: 18px; font-weight: bold; color: #ffd700; margin-top: 10px; margin-bottom: 5px;")
         self.lbl_bracket_query.setAlignment(Qt.AlignCenter)
-        l2.addWidget(self.lbl_bracket_query)
+        # 2026-11-17 (user): bracket question on the left, robot connection on the right (no scrolling).
+        bracket_col = QVBoxLayout()
+        bracket_col.addWidget(self.lbl_bracket_query)
 
         # 2-Column Image + Radio Button Layout
         bracket_layout = QHBoxLayout()
@@ -1022,7 +1095,7 @@ class CalibrationWizardWidget(QWidget):
 
         bracket_layout.addLayout(col_yes)
         bracket_layout.addLayout(col_no)
-        l2.addLayout(bracket_layout)
+        bracket_col.addLayout(bracket_layout)
 
         # Group them
         self.bracket_btn_group = QButtonGroup(self)
@@ -1035,9 +1108,25 @@ class CalibrationWizardWidget(QWidget):
 
         self.conn_box = QGroupBox(tr("wizard.slides.slide_4.box_title"))
         self.conn_box.setStyleSheet("QGroupBox::title { color: #448aff; font-weight: bold; font-size: 16px;}")
-        self.conn_box.setFixedWidth(600)
+        self.conn_box.setFixedWidth(560)
         conn_layout = QVBoxLayout()
         conn_layout.setSpacing(10)
+
+        # 2026-11-17 (user): operators did not know which address to type. UPC fills it in; an external PC
+        # gets the OLED-display guide. Without a camera the field keeps the simulator address below.
+        # The question has a line of its own: beside the buttons the English text was cut off.
+        self.lbl_run_where = QLabel(tr("wizard.slides.slide_4.run_where"))
+        self.lbl_run_where.setStyleSheet("font-size: 14px; font-weight: bold;")
+        conn_layout.addWidget(self.lbl_run_where)
+        where_row = QHBoxLayout()
+        self.btn_ip_upc = QPushButton(tr("wizard.slides.slide_4.btn_upc"))
+        self.btn_ip_external = QPushButton(tr("wizard.slides.slide_4.btn_external"))
+        for btn in (self.btn_ip_upc, self.btn_ip_external):
+            btn.setStyleSheet("background-color: #2b5278; color: white; font-weight: bold; font-size: 14px; padding: 6px 12px; border-radius: 4px;")
+            where_row.addWidget(btn)
+        self.btn_ip_upc.clicked.connect(lambda: self.wizard_ip_input.setText(UPC_ROBOT_ADDRESS))
+        self.btn_ip_external.clicked.connect(self.ask_external_robot_ip)
+        conn_layout.addLayout(where_row)
 
         ip_row = QHBoxLayout()
         lbl_ip = QLabel("IP/Port:")
@@ -1045,7 +1134,7 @@ class CalibrationWizardWidget(QWidget):
         ip_row.addWidget(lbl_ip)
 
         is_sim_or_ui = self.parent_app.ui_only or getattr(self.parent_app.core.observer, 'sim', False)
-        default_ip = "127.0.0.1:50051" if is_sim_or_ui else "192.168.30.1:50051"
+        default_ip = f"127.0.0.1:{ROBOT_PORT}" if is_sim_or_ui else UPC_ROBOT_ADDRESS
         self.wizard_ip_input = QLineEdit(default_ip)
         self.wizard_ip_input.setStyleSheet("background-color: #2a2a2a; color: white; border: 1px solid #444; border-radius: 4px; padding: 6px; font-size: 15px;")
         ip_row.addWidget(self.wizard_ip_input)
@@ -1066,7 +1155,13 @@ class CalibrationWizardWidget(QWidget):
         conn_layout.addLayout(connect_row)
 
         self.conn_box.setLayout(conn_layout)
-        l2.addWidget(self.conn_box, alignment=Qt.AlignCenter)
+        body2 = QHBoxLayout()
+        body2.setSpacing(30)
+        body2.addStretch(1)
+        body2.addLayout(bracket_col)
+        body2.addWidget(self.conn_box, alignment=Qt.AlignVCenter)
+        body2.addStretch(1)
+        l2.addLayout(body2)
 
         slides[self.SLIDE_ROBOT_CONNECT] = slide2
 
@@ -1522,7 +1617,6 @@ class CalibrationWizardWidget(QWidget):
         self.btn_exp_accept.setVisible(not checked)
         self.lbl_wiz_exp_status.setVisible(checked)
         self.exp_manual_panel.setVisible(checked)
-        self.chk_wiz_exp_confirmed.setVisible(checked)
 
     def accept_auto_exposure(self):
         self.chk_wiz_exp_confirmed.setChecked(True)   # applies the exposure and ticks 3)
@@ -1663,6 +1757,11 @@ class CalibrationWizardWidget(QWidget):
                 else:
                     self.set_status(lbl, "wizard.st.error_msg", "color: #f44336; font-weight: bold; font-size: 16px;",
                                     msg=msg)
+
+    def ask_external_robot_ip(self):
+        dlg = RobotIpDialog(self.wizard_ip_input.text(), self)
+        if dlg.exec() == QDialog.Accepted and dlg.address():
+            self.wizard_ip_input.setText(dlg.address())
 
     def intrinsics_prep_steps(self):
         return tr("wizard.slides.slide_intrinsics_prep.steps", file=self.CHARUCO_BOARD_PDF)

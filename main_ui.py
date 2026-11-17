@@ -52,7 +52,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QGridLayout,
     QPushButton, QTextEdit, QLabel, QGroupBox, QComboBox, QCheckBox,
     QLineEdit, QSpinBox, QSlider, QTabWidget, QTableWidget, QHeaderView,
-    QTableWidgetItem, QSizePolicy, QStackedWidget, QButtonGroup
+    QTableWidgetItem, QSizePolicy, QStackedWidget, QButtonGroup, QScrollArea, QFrame
 )
 from PySide6.QtGui import (
     QPainter, QColor, QPen, QFont, QPixmap, QImage, QGuiApplication, QFontDatabase
@@ -2448,15 +2448,24 @@ class UnifiedCalibrationApp(QWidget):
         # ==========================================
         # Top-level tabs (2026-09-30): Wizard / Camera / Advanced (Step 1 + Step 2 sub-tabs)
         # ==========================================
+        # 2026-11-17: the Advanced (840) and Camera tabs set the window's minimum height; on a screen lower
+        # than that, Linux window managers refuse to maximize and only the height fits. They scroll instead.
+        def scrollable(page):
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QFrame.NoFrame)
+            scroll.setWidget(page)
+            return scroll
+
         self.left_tabs.addTab(overview_tab, "Wizard")
-        self.left_tabs.addTab(camera_top_tab, "Camera")
+        self.left_tabs.addTab(scrollable(camera_top_tab), "Camera")
         advanced_tab = QWidget()
         advanced_layout = QVBoxLayout(advanced_tab)
         advanced_layout.setContentsMargins(0, 0, 0, 0)
         self.advanced_tabs = QTabWidget()
         self.advanced_tabs.addTab(main_tab, "Step 1")
         advanced_layout.addWidget(self.advanced_tabs)
-        self.left_tabs.addTab(advanced_tab, "Advanced")
+        self.left_tabs.addTab(scrollable(advanced_tab), "Advanced")
 
         # ==========================================
         # Step 2 Tab: Shared widgets + empty Box1
@@ -2922,6 +2931,11 @@ class UnifiedCalibrationApp(QWidget):
             self.joint_calibrator.clear_user_taught_ready_poses(arm_side, mode)
 
     def _on_marker_problem_requested(self, arm_side, evt, res):
+        # Stop pressed after the worker asked (the signal is queued): no readjustment window for a stopped run.
+        if self.core.stop_event.is_set():
+            res['resolved'] = False
+            evt.set()
+            return
         # Operators did not understand the teaching window: say first which arm lost its marker.
         arm_label = tr(f"dialogs.marker_problem.arm_{arm_side}") if arm_side in ("right", "left") else str(arm_side)
         self.show_message_box(tr("dialogs.marker_problem.notice_title"),
@@ -3035,6 +3049,10 @@ class UnifiedCalibrationApp(QWidget):
     def prompt_marker_problem_teaching(self, arm_side, active_mode=None, **kwargs):
         if not active_mode and 'mode' in kwargs:
             active_mode = kwargs['mode']
+        # 2026-11-17 (user): a sweep cut short by Stop loses its marker; that is not a posture problem.
+        if self.core.stop_event.is_set():
+            self.log_msg("[INFO] Stopped by the operator: no posture readjustment window.")
+            return False
         self.active_teaching_mode = active_mode
         evt = threading.Event()
         res = {'resolved': False}

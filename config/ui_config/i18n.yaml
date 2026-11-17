@@ -414,8 +414,8 @@ wizard:
         en: "CANCEL"
         ko: "취소"
       chk_confirmed:
-        en: "3) I have confirmed and applied the camera brightness."
-        ko: "3) 카메라 밝기 설정을 확인하고 적용 완료했습니다."
+        en: "3) Brightness checked and applied"
+        ko: "3) 밝기 확인·적용 완료"
       status_confirmed:
         en: "Confirmed. Now do 4) Move to Zero Pose."
         ko: "확인 완료. 이제 4) 제로 포즈로 이동하세요."
@@ -479,6 +479,15 @@ wizard:
       additional_bracket_query:
         en: "1) Are you using an additional camera bracket?"
         ko: "1) 추가 카메라 브라켓을 사용하시나요?"
+      run_where:
+        en: "Where is this program running?"
+        ko: "이 프로그램을 어디서 실행하나요?"
+      btn_upc:
+        en: "On the robot's UPC"
+        ko: "로봇 안의 UPC"
+      btn_external:
+        en: "On an external PC"
+        ko: "외부 PC"
       "yes":
         en: "Yes"
         ko: "예"
@@ -662,6 +671,17 @@ wizard:
       ko: "적용 에러"
 
 dialogs:
+  robot_ip:
+    title: {en: "Find the Robot's IP Address", ko: "로봇 IP 찾기"}
+    guide:
+      en: "The OLED display on the robot shows the network it is connected to and its IP address (the vertical text on the right: network name on top, IP below). Enter that IP below. Leave out a suffix such as /23; the port 50051 is added if you leave it out."
+      ko: "로봇의 OLED 화면에 로봇이 연결된 네트워크와 IP가 나옵니다 (오른쪽 세로 글자: 위가 네트워크 이름, 아래가 IP). 그 IP를 아래에 입력하세요. /23 같은 뒷부분은 빼도 되고, 포트를 빼면 50051을 붙입니다."
+    hotspot:
+      en: "Connected through the robot's hotspot: the address is {address}."
+      ko: "로봇 핫스팟으로 연결된 경우 주소는 {address} 입니다."
+    label: {en: "Robot IP", ko: "로봇 IP"}
+    btn_ok: {en: "Use This Address", ko: "이 주소 사용"}
+    btn_cancel: {en: "Cancel", ko: "취소"}
   how_to_move_arms:
     title:
       en: "How to Move Arms (Direct Teaching)"
