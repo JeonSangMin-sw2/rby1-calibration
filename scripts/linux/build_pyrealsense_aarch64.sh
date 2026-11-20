@@ -53,24 +53,29 @@ echo "[4/5] Installing librealsense2 (sudo) and pyrealsense2 into .venv..."
 sudo cmake --install "$BUILD"
 sudo ldconfig
 SITE="$("$PY" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')"
+# Find the module before touching .venv: an empty pyrealsense2 folder imports as a namespace package
+# and the app then fails later with "module 'pyrealsense2' has no attribute 'context'".
+mapfile -t MODS < <(find "$BUILD" \( -name 'pyrealsense2*.so*' -o -name 'pybackend2*.so*' \) -not -path '*/CMakeFiles/*')
+[ "${#MODS[@]}" -gt 0 ] || fail "No pyrealsense2 module was built under $BUILD."
 "$PY" -m pip uninstall -y pyrealsense2 >/dev/null 2>&1 || true
 rm -rf "$SITE/pyrealsense2"
 mkdir -p "$SITE/pyrealsense2"
-mapfile -t MODS < <(find "$BUILD" \( -name 'pyrealsense2*.so*' -o -name 'pybackend2*.so*' \) -not -path '*/CMakeFiles/*')
-[ "${#MODS[@]}" -gt 0 ] || fail "No pyrealsense2 module was built under $BUILD."
 cp -P "${MODS[@]}" "$SITE/pyrealsense2/"
 if [ -f "$SRC/wrappers/python/pyrealsense2/__init__.py" ]; then
     cp "$SRC/wrappers/python/pyrealsense2/__init__.py" "$SITE/pyrealsense2/"
 else
     echo "from .pyrealsense2 import *" > "$SITE/pyrealsense2/__init__.py"
 fi
+[ -f "$SITE/pyrealsense2/__init__.py" ] || fail "__init__.py was not written to $SITE/pyrealsense2."
 
 echo "[5/5] RealSense udev rule (sudo)..."
 sudo cp "$SRC/config/99-realsense-libusb.rules" /etc/udev/rules.d/
 sudo udevadm control --reload-rules && sudo udevadm trigger
 
 "$PY" - <<'EOF'
+from pyrealsense2 import pyrealsense2 as _ext   # raises the real loader error (missing .so, glibc) if any
 import pyrealsense2 as rs
+assert hasattr(rs, "context"), f"pyrealsense2 at {list(rs.__path__)} has no __init__.py importing the module"
 devices = [f"{d.get_info(rs.camera_info.name)} ({d.get_info(rs.camera_info.serial_number)})" for d in rs.context().devices]
 print("pyrealsense2 loaded from", rs.__file__)
 print("Cameras:", ", ".join(devices) if devices else "none found (connect the camera to a USB 3 port, or re-plug it after the udev rule)")
