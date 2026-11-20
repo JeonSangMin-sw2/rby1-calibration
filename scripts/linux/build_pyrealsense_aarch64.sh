@@ -55,7 +55,9 @@ sudo ldconfig
 SITE="$("$PY" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')"
 # Find the module before touching .venv: an empty pyrealsense2 folder imports as a namespace package
 # and the app then fails later with "module 'pyrealsense2' has no attribute 'context'".
-mapfile -t MODS < <(find "$BUILD" \( -name 'pyrealsense2*.so*' -o -name 'pybackend2*.so*' \) -not -path '*/CMakeFiles/*')
+# The same file sits in the build output and in python-install; cp stops on a repeated name, so keep one of each.
+mapfile -t MODS < <(find "$BUILD" \( -name 'pyrealsense2*.so*' -o -name 'pybackend2*.so*' \) -not -path '*/CMakeFiles/*' \
+    | awk -F/ '!seen[$NF]++')
 [ "${#MODS[@]}" -gt 0 ] || fail "No pyrealsense2 module was built under $BUILD."
 "$PY" -m pip uninstall -y pyrealsense2 >/dev/null 2>&1 || true
 rm -rf "$SITE/pyrealsense2"
