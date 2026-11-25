@@ -217,6 +217,23 @@ def load_step2_wrist_diversity(robot_version, setting_path=SETTING_PATH, ready_p
     return steps, True
 
 
+def load_auto_exposure_ceiling_j6_deg(robot_version, ready_poses_path=READY_POSES_PATH):
+    """J6 turn (deg) of the auto exposure's ceiling-facing pose (ready_poses.yaml <version>.auto_exposure_ceiling_j6_deg),
+    or None when the version has none. A value that is not a finite number is an error."""
+    poses = ConfigStorage.load(ready_poses_path) if os.path.exists(ready_poses_path) else {}
+    ver = str(robot_version).lstrip("v")
+    value = (poses.get(f"v{ver}") or {}).get("auto_exposure_ceiling_j6_deg")
+    if value is None:
+        return None
+    try:
+        value = float(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{ready_poses_path} v{ver}.auto_exposure_ceiling_j6_deg must be degrees, got {value!r}") from error
+    if not np.isfinite(value):
+        raise ValueError(f"{ready_poses_path} v{ver}.auto_exposure_ceiling_j6_deg must be finite, got {value}")
+    return value
+
+
 def load_gripper_change_pose(robot_version, ready_poses_path=READY_POSES_PATH):
     """Wizard gripper-change pose (ready_poses.yaml <version>.gripper_change): {"right": [7 deg],
     "left": [7 deg]}. A missing or malformed entry is an error: the robot must not move to a guess."""
@@ -396,6 +413,9 @@ def marker_monitor_summary(history, max_jitter_mm=None):
 AUTO_EXPOSURE_CANDIDATES_US = (1500, 2500, 4000, 6000, 8500, 12000, 16000)
 AUTO_EXPOSURE_MIN_RATE = 0.95          # held still: share of samples with the marker detected
 AUTO_EXPOSURE_MIN_TURNED_RATE = 0.90   # wrist turned towards / away from the camera
+# Jitter gaps this small are noise (2026-11-24: 6000-16000 us all 0.02-0.05 mm and the brightest won); within it
+# the darker exposure is taken (user, 2026-11-24).
+AUTO_EXPOSURE_JITTER_TIE_MM = 0.02
 
 
 def choose_auto_exposure(trials, max_jitter_mm):
@@ -403,8 +423,8 @@ def choose_auto_exposure(trials, max_jitter_mm):
 
     trials: [{"exposure", "rate", "jitter_mm", "turned": [{"rate", "jitter_mm"}, ...]}], jitter = RMS
     marker position jitter (mm, None without two detections). A trial qualifies when it was also measured
-    turned and every measurement meets the rate and max_jitter_mm. Among those the steadiest wins (largest
-    RMS jitter over its measurements), a darker exposure on a tie (less glare and motion blur)."""
+    turned and every measurement meets the rate and max_jitter_mm. Among those whose worst RMS jitter is within
+    AUTO_EXPOSURE_JITTER_TIE_MM of the steadiest, the darkest wins (less glare and motion blur)."""
     def ok(m, min_rate):
         return m["rate"] >= min_rate and m["jitter_mm"] is not None and m["jitter_mm"] <= max_jitter_mm
     qualified = [t for t in trials if t.get("turned") and ok(t, AUTO_EXPOSURE_MIN_RATE)
@@ -412,7 +432,9 @@ def choose_auto_exposure(trials, max_jitter_mm):
     if not qualified:
         return None
     worst = lambda t: max([t["jitter_mm"]] + [m["jitter_mm"] for m in t["turned"]])  # noqa: E731
-    return min(qualified, key=lambda t: (round(worst(t), 3), t["exposure"]))
+    steadiest = min(worst(t) for t in qualified)
+    return min((t for t in qualified if worst(t) <= steadiest + AUTO_EXPOSURE_JITTER_TIE_MM + 1e-9),
+               key=lambda t: t["exposure"])
 
 
 def get_arm_config(model, arm, version="1.2"):

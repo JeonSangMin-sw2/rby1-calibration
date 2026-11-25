@@ -123,6 +123,25 @@ wizard:
     run_collect_n: {en: "Pose collection {n}/{total}", ko: "자세 수집 {n}/{total}"}
     run_solve: {en: "Solve and verify", ko: "계산 · 검증"}
     skipped: {en: "{name} (skipped)", ko: "{name} (건너뜀)"}
+  # Run-line cautions (core/calibration/sequences/run_warnings.py), 2026-11-24 (user).
+  run_warn:
+    arm_right: {en: "right arm", ko: "오른팔"}
+    arm_left: {en: "left arm", ko: "왼팔"}
+    iter_cap: {en: "{arm} {joint} used all {n} iterations before it settled", ko: "{arm} {joint}가 반복 {n}회를 모두 쓰고서야 수렴함"}
+    offset_clamped: {en: "{arm} {joint} offset was cut at its safe limit", ko: "{arm} {joint} 오프셋이 안전 한도에서 잘림"}
+    j6_methods: {en: "{arm} J6: the two methods differ by {diff}° (check the bracket mounting)", ko: "{arm} J6 두 방법이 {diff}° 다름 (브라켓 장착 확인)"}
+    bracket_limit: {en: "{arm} bracket position reached its limit around the design value", ko: "{arm} 브라켓 위치가 설계값 기준 한도에 닿음"}
+    pass_change: {en: "{arm} values still moved between passes (J6 {joint6_deg}°, J5 {joint5_deg}°, J3 {joint3_deg}°, bracket {bracket_pos_mm} mm)", ko: "{arm} 회차 사이 값이 아직 움직임 (J6 {joint6_deg}°, J5 {joint5_deg}°, J3 {joint3_deg}°, 브라켓 {bracket_pos_mm} mm)"}
+    camera_range: {en: "camera position at the end of its allowed range ({ends})", ko: "카메라 위치가 허용 범위 끝에 걸림 ({ends})"}
+    marker_bound: {en: "{sides} marker position reached its ±{bound} mm search range (check that the head is fixed firmly)", ko: "{sides} 마커 위치가 추정 범위 ±{bound} mm 끝에 걸림 (헤드 고정 상태 확인)"}
+    head_tilt_gap: {en: "head tilt differs between the head-camera step ({step1_5}°) and the final solve ({step2}°) by more than {limit}°", ko: "헤드 tilt가 헤드 카메라 단계({step1_5}°)와 최종 계산({step2}°)에서 {limit}° 넘게 다름"}
+    check_pose_gap: {en: "at the check pose the camera sees the hands {gap} mm apart front-back / up-down (x {dx}, z {dz} mm; limit {limit} mm)", ko: "체크포즈에서 카메라가 본 양손 앞뒤·높이 차가 {gap} mm (x {dx}, z {dz} mm, 기준 {limit} mm)"}
+    check_pose_unseen: {en: "the check pose could not be checked by the camera (see the log)", ko: "체크포즈를 카메라로 확인하지 못함 (로그 참고)"}
+    click_for_log: {en: "(click here for the log lines behind these cautions)", ko: "(누르면 주의 내용의 로그를 볼 수 있습니다)"}
+    log_title: {en: "Calibration cautions and their log", ko: "보정 주의 내용과 로그"}
+    log_header: {en: "Warning lines in the log:", ko: "로그의 경고 줄:"}
+    log_none: {en: "(no warning lines were logged for this stage)", ko: "(이 단계에서 기록된 경고 줄이 없습니다)"}
+    log_close: {en: "Close", ko: "닫기"}
   btn_start_wizard:
     en: "Start"
     ko: "시작"
@@ -145,8 +164,8 @@ wizard:
     en: "Start Calibration"
     ko: "캘리브레이션 시작"
   btn_open_feed:
-    en: "Open Camera Feed"
-    ko: "카메라 피드 열기"
+    en: "Open Live View"
+    ko: "라이브 뷰 열기"
   btn_stop_motion:
     en: "Stop Motion"
     ko: "모션 정지"
@@ -222,10 +241,35 @@ wizard:
       cam_unknown:
         en: "unknown"
         ko: "확인 불가"
+    slide_camera_connect:
+      title:
+        en: "0. Camera Connection"
+        ko: "0. 카메라 연결"
+      steps:
+        en: "1. Connect the RealSense camera to a USB 3.0 port (blue, or marked SS) with a USB 3.0 cable.\n2. Close any other program that uses the camera (e.g. RealSense Viewer).\n3. Press [Connect Camera]. When the model and serial number appear below, press [Next]."
+        ko: "1. RealSense 카메라를 USB 3.0 케이블로 USB 3.0 포트(파란색 또는 SS 표시)에 연결하세요.\n2. 카메라를 쓰는 다른 프로그램(RealSense Viewer 등)을 닫으세요.\n3. [카메라 연결]을 누르세요. 아래에 모델과 시리얼 번호가 나오면 [다음]을 누르세요."
+      btn_connect:
+        en: "Connect Camera"
+        ko: "카메라 연결"
+      st_not_connected:
+        en: "Camera not connected."
+        ko: "카메라가 연결되지 않았습니다."
+      st_connecting:
+        en: "Connecting to the camera..."
+        ko: "카메라 연결 중..."
+      st_connected:
+        en: "Connection complete: {model} (S/N {serial})\n{intrinsics}"
+        ko: "연결 완료: {model} (S/N {serial})\n{intrinsics}"
+      st_ui_only:
+        en: "UI-only (simulation) mode: no camera is needed. Press [Next]."
+        ko: "UI 전용(시뮬레이션) 모드에서는 카메라가 필요 없습니다. [다음]을 누르세요."
+      failed_msg:
+        en: "The camera could not be connected. Check the USB 3.0 cable and port, close other camera programs, then press [Connect Camera] again. The log shows the error."
+        ko: "카메라를 연결하지 못했습니다. USB 3.0 케이블과 포트를 확인하고 카메라를 쓰는 다른 프로그램을 닫은 뒤 [카메라 연결]을 다시 누르세요. 오류 내용은 로그에 있습니다."
     slide_intrinsics_prep:
       title:
-        en: "0. Before Camera Distortion Calibration"
-        ko: "0. 카메라 왜곡 보정 준비"
+        en: "0-1. Before Camera Distortion Calibration"
+        ko: "0-1. 카메라 왜곡 보정 준비"
       notice:
         en: "This camera has no registered distortion calibration yet. Without the camera's distortion calibration, the accuracy may be lower."
         ko: "이 카메라는 아직 등록된 왜곡 보정값이 없습니다. 카메라의 왜곡 보정을 하지 않을 경우, 정확도가 저하될 수 있습니다."
@@ -252,8 +296,11 @@ wizard:
         en: "Status: waiting"
         ko: "상태: 대기 중"
       status_moving:
-        en: "Status: moving to the gripper-change pose..."
-        ko: "상태: 그리퍼 교체 자세로 이동 중..."
+        en: "Status: moving to the gripper-change pose... (STOP halts the arms)"
+        ko: "상태: 그리퍼 교체 자세로 이동 중... (정지 버튼으로 멈춤)"
+      status_stopped:
+        en: "Stopped part way. Press the move button again to carry on."
+        ko: "중간에 멈췄습니다. 이동 버튼을 다시 누르면 이어서 이동합니다."
       status_done:
         en: "Pose reached and gripper power OFF"
         ko: "자세 도착, 그리퍼 전원 꺼짐"
@@ -421,8 +468,8 @@ wizard:
         ko: "확인 완료. 이제 4) 제로 포즈로 이동하세요."
     slide_3:
       title:
-        en: "0-1. Camera Distortion Calibration (Intrinsics)"
-        ko: "0-1. 카메라 왜곡 보정 (내부 파라미터)"
+        en: "0-2. Camera Distortion Calibration (Intrinsics)"
+        ko: "0-2. 카메라 왜곡 보정 (내부 파라미터)"
       skip_hint:
         en: "Skipping this calibration may lower the accuracy."
         ko: "이 보정을 건너뛰면 정확도가 저하될 수 있습니다."
@@ -470,15 +517,12 @@ wizard:
         en: "1. Robot Connection"
         ko: "1. 로봇 연결"
       box_title:
-        en: "2) Robot Connection & Initialization"
-        ko: "2) 로봇 연결 및 초기화"
+        en: "Robot Connection && Initialization"
+        ko: "로봇 연결 및 초기화"
       inst1:
         en: "Connect to the robot using the configured IP address."
         ko: "설정된 IP 주소를 사용하여 로봇에 연결하십시오."
 
-      additional_bracket_query:
-        en: "1) Are you using an additional camera bracket?"
-        ko: "1) 추가 카메라 브라켓을 사용하시나요?"
       run_where:
         en: "Where is this program running?"
         ko: "이 프로그램을 어디서 실행하나요?"
@@ -489,11 +533,11 @@ wizard:
         en: "On an external PC"
         ko: "외부 PC"
       "yes":
-        en: "Yes"
-        ko: "예"
+        en: "Mounted on the chest\n(no head calibration)"
+        ko: "가슴에 체결하여 진행\n(헤드 보정 X)"
       "no":
-        en: "No"
-        ko: "아니오"
+        en: "Mounted on the head\n(with head calibration)"
+        ko: "헤드에 체결하여 진행\n(헤드 보정 포함)"
     slide_6:
       title:
         en: "7. Home Offset Position Setup"
@@ -544,10 +588,21 @@ wizard:
       stop_desc:
         en: "Emergency stop on abnormal motion ->"
         ko: "비정상 동작 시 모션 정지 ->"
+    # 2026-11-24 (user): the check pose split off the apply slide.
+    slide_check_pose:
+      title:
+        en: "9. Check Pose"
+        ko: "9. 체크 자세 확인"
+      desc:
+        en: "1) Move to the check pose with the original or the calibrated offsets and see whether the two arms stand symmetrically.\n2) At the check pose, hold a button below to bring the hands together or move them apart and compare them up close."
+        ko: "1) 원본 또는 보정 오프셋으로 체크 자세에 가서 두 팔이 대칭인지 확인하세요.\n2) 체크 자세에 도착하면 아래 버튼을 누르고 있는 동안 양손을 모으거나 벌려 가까이에서 비교할 수 있습니다."
+      gap_hint:
+        en: "2) The arms move toward that pose only while you hold the button and stop when you let go:  → ←  together   |   ← →  apart"
+        ko: "2) 버튼을 누르고 있는 동안만 그 자세로 움직이고, 손을 떼면 멈춥니다:  → ←  모으기   |   ← →  벌리기"
     slide_8:
       title:
-        en: "9. Apply Home Offset"
-        ko: "9. 홈 오프셋 적용"
+        en: "10. Apply Home Offset"
+        ko: "10. 홈 오프셋 적용"
       desc:
         en: "Review and apply the calculated optimized home offset to the robot."
         ko: "계산된 최적화 홈 오프셋을 검토하고 로봇에 적용합니다."
@@ -555,43 +610,47 @@ wizard:
         en: "Apply Home Offset Instructions"
         ko: "홈 오프셋 적용 지침 사항"
       inst1:
-        en: "1. Comparison: Review and compare offsets before and after calibration using 'Baseline' and 'Optimized'."
-        ko: "1. 비교: 'Baseline' 및 'Optimized'를 선택하여 보정 전후 오프셋을 비교해 볼 수 있습니다."
+        en: "1. Zero Pose Check: Use 'Rollback Zero Pose' / 'New Offset Zero Pose' to move the joints to zero with the original or the calibrated offsets and compare them."
+        ko: "1. 제로 포즈 검사: '원본 제로 자세' / '보정 제로 자세'를 눌러 기존 영점과 보정된 영점으로 각각 이동해 비교하세요."
       inst2:
-        en: "2. Zero Pose Check: Use 'Rollback Zero Pose' / 'New Offset Zero Pose' to move the joints to zero with the original or the calibrated offsets and compare them."
-        ko: "2. 제로 포즈 검사: '원본 제로 자세' / '보정 제로 자세'를 눌러 기존 영점과 보정된 영점으로 각각 이동해 비교하세요."
-      inst3:
-        en: "3. Symmetry Check: Use 'Rollback Check Pose' / 'New Offset Check Pose' to verify if both robot arms are symmetrical."
-        ko: "3. 대칭성 검사: '원본 체크 자세' / '보정 체크 자세'를 눌러 두 팔이 대칭을 이루는지 확인하세요."
-      inst4:
-        en: "4. Apply / Rollback: click 'Apply New Offset' to apply the calibrated values, or 'Rollback Joint' to go back to the original values."
-        ko: "4. 적용/롤백: 보정값을 쓰려면 '신규 보정 적용', 원래 값으로 되돌리려면 '기존 영점 복구'를 누르세요."
+        en: "2. Apply / Rollback: click 'Apply New Offset' to apply the calibrated values, or 'Rollback Joint' to go back to the original values."
+        ko: "2. 적용/롤백: 보정값을 쓰려면 '신규 보정 적용', 원래 값으로 되돌리려면 '기존 영점 복구'를 누르세요."
       btn_apply:
         en: "Apply Home Offset"
         ko: "홈 오프셋 적용"
       btn_rollback_zero:
-        en: "2) Rollback Zero Pose"
-        ko: "2) 원본 제로 자세"
+        en: "1) Rollback Zero Pose"
+        ko: "1) 원본 제로 자세"
       btn_new_offset_zero:
-        en: "2) New Offset Zero Pose"
-        ko: "2) 보정 제로 자세"
+        en: "1) New Offset Zero Pose"
+        ko: "1) 보정 제로 자세"
       btn_rollback_preview:
-        en: "3) Rollback Check Pose"
-        ko: "3) 원본 체크 자세"
+        en: "1) Rollback Check Pose"
+        ko: "1) 원본 체크 자세"
       btn_new_offset_preview:
-        en: "3) New Offset Check Pose"
-        ko: "3) 보정 체크 자세"
+        en: "1) New Offset Check Pose"
+        ko: "1) 보정 체크 자세"
       btn_rollback_joint:
-        en: "4) Rollback Joint"
-        ko: "4) 기존 영점 복구"
+        en: "2) Rollback Joint"
+        ko: "2) 기존 영점 복구"
       btn_apply_new_offset:
-        en: "4) Apply New Offset"
-        ko: "4) 신규 보정 적용"
+        en: "2) Apply New Offset"
+        ko: "2) 신규 보정 적용"
 
   step6:
     no_json:
       en: "No {state} JSON found."
       ko: "{state} 설정 파일을 찾을 수 없습니다."
+    # Gather / spread at the check pose, held (2026-11-24, user).
+    btn_gather: {en: "→   ←", ko: "→   ←"}
+    btn_spread: {en: "←   →", ko: "←   →"}
+    gap_moving_gather: {en: "Status: bringing the hands together... (let go to stop)", ko: "상태: 양손을 모으는 중... (손을 떼면 멈춤)"}
+    gap_moving_spread: {en: "Status: moving the hands apart... (let go to stop)", ko: "상태: 양손을 벌리는 중... (손을 떼면 멈춤)"}
+    gap_done_gather: {en: "Status: hands brought together (100 mm closer than the check pose).", ko: "상태: 양손을 다 모았습니다 (확인 자세보다 100 mm 가까움)."}
+    gap_done_spread: {en: "Status: back at the check pose.", ko: "상태: 확인 자세로 돌아왔습니다."}
+    gap_stopped: {en: "Status: stopped where you let go. Press and hold again to carry on.", ko: "상태: 손을 뗀 자리에서 멈췄습니다. 다시 누르고 있으면 이어서 움직입니다."}
+    gap_error: {en: "Status: the move failed ({error}).", ko: "상태: 이동 실패 ({error})"}
+    gap_unavailable: {en: "No hands-together pose for v{version} yet.", ko: "v{version}에는 아직 양손 모으기 자세가 없습니다."}
     moving_check:
       en: "Status: Moving to {state} check posture..."
       ko: "상태: {state} 체크 자세로 이동 중..."
@@ -803,8 +862,8 @@ dialogs:
       en: "Manual Teaching Steps"
       ko: "수동 위치 교시 절차"
     feed_box_title:
-      en: "Live Camera Feed"
-      ko: "실시간 카메라 피드"
+      en: "Live View"
+      ko: "라이브 뷰"
     feed_loading:
       en: "Camera Feed Loading..."
       ko: "카메라 피드 로딩 중..."

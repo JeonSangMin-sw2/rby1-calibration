@@ -151,7 +151,7 @@ class IndicatorWidget(QWidget):
 class CameraFeedDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Camera Live Feed")
+        self.setWindowTitle("Live View")
         self.resize(640, 480)
         self.setStyleSheet(DARK_STYLESHEET)
 
@@ -1464,6 +1464,8 @@ class UnifiedCalibrationApp(QWidget):
             self.refresh_camera_tab_info()
             self.sync_marker_monitor()
             self.log_msg("[SUCCESS] RealSense Camera connected and streaming successfully!")
+            # The camera is no longer opened at start (2026-11-24), so its config gaps are reported here.
+            self.warn_camera_config_gaps()
         except Exception as e:
             error = e
             self.log_msg(f"[ERROR] Failed to connect RealSense camera: {e}")
@@ -2125,7 +2127,7 @@ class UnifiedCalibrationApp(QWidget):
         self.btn_monitor.toggled.connect(self.on_monitor_toggled)
         self.btn_monitor.setFixedHeight(26)
 
-        self.btn_camera_feed = QPushButton("Camera Feed")
+        self.btn_camera_feed = QPushButton("Live View")
         self.btn_camera_feed.setStyleSheet("background-color: #2b5278; color: white; font-weight: bold; border-radius: 4px; border: 1px solid #111111;")
         self.btn_camera_feed.clicked.connect(self.toggle_camera_feed_dialog)
         self.btn_camera_feed.setFixedHeight(26)
@@ -6056,16 +6058,10 @@ def main():
     robot = None
     core = CalibrationCore()
 
-    camera_error = None
     if not args.ui:
-        print("[INFO] Initializing Camera Marker Transform System...")
-        try:
-            core.connect_camera()
-        except Exception as e:
-            print(f"[ERROR] Failed to load camera marker system: {e}")
-            print("[INFO] Fallback to UI-only mode.")
-            camera_error = str(e)
-            args.ui = True
+        # 2026-11-24 (user): the camera is connected from the wizard's first slide (or the Camera tab)
+        # after its how-to, not at start, where a failure dropped the whole app into UI-only mode.
+        print("[INFO] Camera not opened at start; connect it on the wizard's first slide or the Camera tab.")
     else:
         print("[INFO] Starting in simulation (UI-only) mode.")
 
@@ -6080,12 +6076,6 @@ def main():
     # Opens maximized (2026-11-12, user) so the wizard slides fit without scrolling; un-maximizing
     # returns to the centred window above.
     gui.showMaximized()
-    if camera_error:
-        # Used to go to the console only, so the window opened in UI-only mode with no word of
-        # why -- including when the fix is simply a USB 3 cable.
-        QMessageBox.critical(gui, "Camera Connection Failed",
-                             f"Could not connect to RealSense camera:\n{camera_error}\n\n"
-                             "Starting in UI-only mode.")
 
     try:
         sys.exit(app.exec())

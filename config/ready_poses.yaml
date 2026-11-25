@@ -23,12 +23,33 @@ v1.2:
   # Wizard gripper-change pose (2026-11-12, user): tool flange facing up so the gripper comes off easily. J3+J5 = -180
   # turns the flange up (FK on the model M v1.2 URDF, arm chains as on model A); J5 -70 stays clear of its -90 limit,
   # J1 10 deg out keeps the hands off the body (flange 10 deg from vertical).
+  # Wizard auto exposure (user, 2026-11-25): the right wrist_pitch pose with J6 turned this far (deg) tilts the marker
+  # towards the ceiling lights, the end of the Step 1 J6 sweep (+-22.5). At this pose J5 only spins the marker in its
+  # plane, so the J5 +-15 checks never changed the glare angle. Model M v1.2, nominal camera: face up 17 deg, 25 deg from
+  # facing the camera. v1.3 has none: there J6 spins the marker in its plane and J5 +15 already tilts it up.
+  auto_exposure_ceiling_j6_deg: -22.5
   gripper_change:
     right_arm: [0.0, -10.0, 0.0, -110.0, 0.0, -70.0, 0.0]
     left_arm: [0.0, 10.0, 0.0, -110.0, 0.0, -70.0, 0.0]
   check_calib:
     right_arm: [-24.670293247716117,-39.97309779281507, 11.245521098854034, -107.94826174466372, -123.90104309118438, 62.20615349398536, 58.400917359415544]
     left_arm: [-24.673371649425416, 39.977181699521026, -11.2449384541747, -107.94870000866068, 123.90090751555407, 62.20615370729742, -58.400917505707554]
+  # The check pose with the hands brought in (wizard 'Bring Together', held): check_calib puts both ee at
+  # link_torso_5 x 350, y +-150, z 0 mm; this keeps x, z and the orientation with y +-100 mm. Solved on the
+  # model M v1.2 simulator (scratch/check_gather_pose_sim.py, 2026-11-24): orientation change 0.005 deg.
+  check_calib_gather:
+    right_arm: [-28.7608, -36.0076, 17.6918, -109.1932, -117.6528, 55.7002, 54.7571]
+    left_arm: [-28.7726, 36.0173, -17.692, -109.1955, 117.6485, 55.6984, -54.7536]
+  # Post-Step 2 check at check_calib (sequences/verify.py): head [pan, tilt] and the right J6 turn (left mirrored)
+  # that make the head camera see both markers there. A detected marker's -z faces the camera; the -42 deg first
+  # used here turned the markers away and the real run saw neither (2026-11-24 16:51). Facing them needs +136 deg,
+  # past the J6 limit (+-155); -180 is the best within it. Model M v1.2, nominal camera: markers 49 deg from
+  # facing the camera (Step 2 poses <= 37), >= 60 px inside the image, about 300 mm away. User chose this, 2026-11-24.
+  # Removed 2026-11-25: extra views (head 46, facing at head 35) always gave the same gap as this one, and check-region
+  # poses added to Step 2 made the real hands 0.7 mm worse (do not retry; harness trap).
+  check_calib_view:
+    head_deg: [0.0, 58.0]
+    j6_turn_deg: -180.0
   # Step 2 wrist-diversity poses (head robots, setting.yaml step2.wrist_diversity_poses): deltas in deg from the
   # Step 2 baseline -- right/left [J4, J5, J6], head [pan, tilt]; J0-J3 stay at the baseline. Chosen offline on
   # 2026-09-30 from the 09-29 15:13 D405 run within J4 +-25 / J5 +-20 / J6 +-30 deg (both markers in view with

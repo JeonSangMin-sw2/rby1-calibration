@@ -366,6 +366,9 @@ def optimize_step2(
         # APPLY BRACKETS, so recording them here keeps the result reproducible on its own.
         "ee_to_marker_used": {side: [float(v) for v in ee_to_marker_nom[side]] for side in active_arms},
     }
+    if q_head_offset_init is not None and q_head_offset is not None:
+        # The head-camera sweep's head offsets, same sign as head_joint_offset_deg (sequences/run_warnings.py).
+        result_dict["head_step1_5_offset_deg"] = np.rad2deg(q_head_offset_init).tolist()
     if mount_to_cam_new is not None:
         result_dict["mount_to_cam_new"] = mount_to_cam_new
     if head_base_to_cam_new is not None:
@@ -397,6 +400,7 @@ def optimize_step2(
             "camera_at_range_end": ends,
             "joint6_step1_deg": step1_j6,
             "joint5_step1_deg": step1_j5,
+            "joint6_solved": bool(solve_j6),
         }
 
     if self.last_home_reset_path is not None and Path(self.last_home_reset_path).exists():
